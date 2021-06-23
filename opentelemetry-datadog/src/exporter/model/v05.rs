@@ -111,7 +111,13 @@ fn encode_traces(
             rmp::encode::write_u64(&mut encoded, span.parent_span_id.to_u64())?;
             rmp::encode::write_i64(&mut encoded, start)?;
             rmp::encode::write_i64(&mut encoded, duration)?;
-            rmp::encode::write_i32(&mut encoded, span.status_code as i32)?;
+            rmp::encode::write_i32(
+                &mut encoded,
+                match span.status_code {
+                    opentelemetry::trace::StatusCode::Error => 1,
+                    _ => 0,
+                },
+            )?;
             rmp::encode::write_map_len(&mut encoded, span.attributes.len() as u32)?;
             for (key, value) in span.attributes.iter() {
                 rmp::encode::write_u32(&mut encoded, interner.intern(key.as_str()))?;
