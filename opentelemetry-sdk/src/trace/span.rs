@@ -185,7 +185,14 @@ impl Span {
 
         match provider.span_processors().as_slice() {
             [] => {}
+            // fast path to avoid `data.clone()`
             [processor] => {
+                // Exporters should not be sent non-sampled spans, cf.
+                // https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/sdk.md#sampling
+                if processor.is_exporter() && !self.span_context.is_sampled() {
+                    return;
+                }
+
                 processor.on_end(build_export_data(
                     data,
                     self.span_context.clone(),
@@ -196,6 +203,10 @@ impl Span {
             processors => {
                 let config = provider.config();
                 for processor in processors {
+                    if processor.is_exporter() && !self.span_context.is_sampled() {
+                        continue;
+                    }
+
                     processor.on_end(build_export_data(
                         data.clone(),
                         self.span_context.clone(),

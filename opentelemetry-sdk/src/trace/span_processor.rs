@@ -90,6 +90,12 @@ pub trait SpanProcessor: Send + Sync + std::fmt::Debug {
     /// Shuts down the processor. Called when SDK is shut down. This is an
     /// opportunity for processors to do any cleanup required.
     fn shutdown(&mut self) -> TraceResult<()>;
+    /// Returns true if this processor is an exporter. If that's the case,
+    /// `on_end` will not be called for non-sampled spans.
+    fn is_exporter(&self) -> bool {
+        /// Processors are not exporters by default.
+        false
+    }
 }
 
 /// A [`SpanProcessor`] that exports synchronously when spans are finished.
@@ -162,6 +168,10 @@ impl SpanProcessor for SimpleSpanProcessor {
         }
 
         Ok(())
+    }
+
+    fn is_exporter(&self) -> bool {
+        true
     }
 }
 
@@ -267,6 +277,10 @@ impl<R: TraceRuntime> SpanProcessor for BatchSpanProcessor<R> {
         futures_executor::block_on(res_receiver)
             .map_err(|err| TraceError::Other(err.into()))
             .and_then(|identity| identity)
+    }
+
+    fn is_exporter(&self) -> bool {
+        true
     }
 }
 
